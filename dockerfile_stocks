@@ -1,0 +1,7 @@
+FROM tensorflow/tensorflow:latest-gpu
+RUN apt install -y vim
+RUN pip install matplotlib numpy pandas yfinance pandas_datareader keras
+RUN pip install jedi==0.17.2
+
+
+
