@@ -1,0 +1,43 @@
+# Start FROM Nvidia PyTorch image https://ngc.nvidia.com/catalog/containers/nvidia:pytorch
+FROM nvcr.io/nvidia/pytorch:21.03-py3
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Install linux packages
+ENV TZ=US/Mountain
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN apt update && apt install -y zip htop screen libgl1-mesa-glx wget sudo vim software-properties-common
+
+# Install GIS stuff
+RUN sudo add-apt-repository -y ppa:ubuntugis/ppa && \
+    sudo apt update && \
+    sudo apt install -y gdal-bin qgis 
+
+
+
+# Install python dependencies
+COPY requirements.txt .
+RUN pip3 uninstall -y nvidia-tensorboard nvidia-tensorboard-plugin-dlprof
+RUN pip3 install --no-cache -r requirements.txt gsutil notebook
+
+#Install whatever python stuff I want
+#Note, this is a conda installation of python so no apt install python3-gdal type stuff
+RUN conda install -c conda-forge gdal && \
+    pip3 install --upgrade pip && \
+    pip3 install scikit-build numpy scipy matplotlib ipython shapely fiona geojson pandas scikit-image pyyaml tqdm albumentations && \ 
+    pip3 install -U jedi==0.17.2 parso==0.7
+
+#Only for maschenb:
+RUN groupadd -r dglabs -g 4006
+RUN useradd -u 902759 -r -g dglabs -d /home/maschenb -m -s /bin/bash -c "$USER user" maschenb && \
+    usermod -aG sudo maschenb
+
+
+# create a non-root user
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+USER maschenb
+WORKDIR /home/maschenb
+RUN git clone https://github.com/ultralytics/yolov5.git 
+
+
+#sudo nvidia-docker run -it --rm -u $USERID:$GROUPID -e USER=$USER -v /home/maschenb/.aws:/home/maschenb/.aws -v /mnt/tier1/:/mnt/tier1/ -v /mnt/tier2/:/mnt/tier2/  -v /mnt/tier3/:/mnt/tier3/ -v /mnt/tier4/:/mnt/tier4/ -v /mnt/tier5/:/mnt/tier5/ -v /mnt/panasas:/mnt/panasas --detach-keys="ctrl-q,i" --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --volume="$HOME/.Xauthority:/home/maschenb/.Xauthority:rw" --env="DISPLAY" --ipc=host --net=host mga_yolov5_withx:latest
+
